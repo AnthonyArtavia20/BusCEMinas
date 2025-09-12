@@ -1,0 +1,63 @@
+#lang racket
+
+(require racket/gui
+         "logic.rkt")
+
+;; Variables globales
+(define tablero-actual #f)
+(define filas 0)
+(define columnas 0)
+
+;; Crear ventana principal
+(define frame (new frame% 
+                   [label "BusCEMinas"]
+                   [width 600]
+                   [height 400]))
+
+;; Panel para el tablero
+(define panel-tablero (new vertical-panel% 
+                          [parent frame]
+                          [alignment '(center center)]))
+
+;; Función para crear la interfaz gráfica
+(define (iniciar-interfaz tablero num-filas num-columnas)
+  (set! tablero-actual tablero)
+  (set! filas num-filas)
+  (set! columnas num-columnas)
+  
+  ;; Limpiar panel existente
+  (send panel-tablero delete-child (send panel-tablero get-child))
+  
+  ;; Crear botones para cada celda
+  (crear-botones-tablero tablero num-filas num-columnas)
+  
+  (send frame show #t))
+
+;; Crear botones del tablero
+(define (crear-botones-tablero tablero num-filas num-columnas)
+  (for ([i num-filas])
+    (define panel-fila (new horizontal-panel% 
+                           [parent panel-tablero]
+                           [alignment '(center center)]))
+    (for ([j num-columnas])
+      (new button%
+           [parent panel-fila]
+           [label "?"]
+           [min-width 30]
+           [min-height 30]
+           [callback (λ (b e) (click-celda i j))]))))
+
+;; Función cuando se hace click en una celda
+(define (click-celda fila columna)
+  (printf "Click en celda (~a, ~a)\n" fila columna)
+  (define celda (obtener-celda tablero-actual fila columna))
+  
+  (if (es-mina? celda)
+      (printf "¡BOOM! Perdiste.\n")
+      (printf "Minas adyacentes: ~a\n" (obtener-minas-adyacentes celda))))
+
+;; Exportar función principal
+(define (iniciar-juego tablero)
+  (iniciar-interfaz tablero (length tablero) (length (first tablero))))
+
+(provide iniciar-juego)

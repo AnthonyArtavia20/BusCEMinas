@@ -1,0 +1,28 @@
+#lang racket
+
+(require "logic.rkt")
+
+;;; NIVELES DE DIFICULTAD
+(define NIVEL-FACIL 0.1)
+(define NIVEL-MEDIO 0.15)
+(define NIVEL-DIFICIL 0.2)
+
+;;; FUNCIÓN PRINCIPAL
+(define (BuscaCE filas columnas nivel)
+  "Función principal para iniciar el juego"
+  (cond
+    [(< filas 8) (error "Mínimo 8 filas")]
+    [(> filas 15) (error "Máximo 15 filas")]
+    [(< columnas 8) (error "Mínimo 8 columnas")]
+    [(> columnas 15) (error "Máximo 15 columnas")]
+    [else
+     (let ((porcentaje
+            (cond
+              [(equal? nivel 'Facil) NIVEL-FACIL]
+              [(equal? nivel 'Medio) NIVEL-MEDIO]
+              [(equal? nivel 'Dificil) NIVEL-DIFICIL]
+              [else (error "Nivel no válido")])))
+       (crear-tablero-con-minas filas columnas porcentaje))]))
+
+;; Ejemplo de uso:
+;; (BuscaCE 8 10 'Facil)

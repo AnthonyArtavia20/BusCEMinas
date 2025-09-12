@@ -1,0 +1,216 @@
+#lang racket
+
+;;; DEFINICIÓN DE ESTRUCTURAS DE DATOS
+
+;; Una celda es: (list mina? minas-adyacentes descubierta? bandera?)
+;; donde: 
+;; - mina?: boolean (#t o #f)
+;; - minas-adyacentes: número (0-8)
+;; - descubierta?: boolean
+;; - bandera?: boolean
+
+;; Un tablero es: (list (list celda) (list celda) ...)
+
+;;; FUNCIONES BÁSICAS PARA MANIPULAR CELDAS
+
+(define (crear-celda-vacia)
+  "Crea una celda vacía sin mina"
+  (list #f 0 #f #f))
+
+(define (crear-celda-mina)
+  "Crea una celda con mina"
+  (list #t 0 #f #f))
+
+(define (es-mina? celda)
+  "Verifica si la celda tiene mina"
+  (first celda))
+
+(define (obtener-minas-adyacentes celda)
+  "Obtiene el número de minas adyacentes"
+  (second celda))
+
+(define (esta-descubierta? celda)
+  "Verifica si la celda está descubierta"
+  (third celda))
+
+(define (tiene-bandera? celda)
+  "Verifica si la celda tiene bandera"
+  (fourth celda))
+
+(define (poner-mina celda)
+  "Pone una mina en la celda"
+  (list #t (obtener-minas-adyacentes celda) 
+        (esta-descubierta? celda) 
+        (tiene-bandera? celda)))
+
+(define (poner-minas-adyacentes celda numero)
+  "Establece el número de minas adyacentes"
+  (list (es-mina? celda) numero 
+        (esta-descubierta? celda) 
+        (tiene-bandera? celda)))
+
+(define (descubrir-celda-func celda)
+  "Marca la celda como descubierta"
+  (list (es-mina? celda) 
+        (obtener-minas-adyacentes celda) 
+        #t 
+        (tiene-bandera? celda)))
+
+(define (poner-bandera celda)
+  "Pone/quita bandera en la celda"
+  (list (es-mina? celda) 
+        (obtener-minas-adyacentes celda) 
+        (esta-descubierta? celda) 
+        (not (tiene-bandera? celda))))
+
+;;; FUNCIONES PARA MANIPULAR TABLEROS
+
+(define (crear-tablero-vacio filas columnas)
+  "Crea un tablero vacío de filas x columnas"
+  (crear-tablero-vacio-aux filas columnas '()))
+
+(define (crear-tablero-vacio-aux filas columnas resultado)
+  "Función auxiliar recursiva para crear tablero vacío"
+  (if (= filas 0)
+      resultado
+      (crear-tablero-vacio-aux (- filas 1) columnas 
+                               (cons (crear-fila-vacia columnas) resultado))))
+
+(define (crear-fila-vacia columnas)
+  "Crea una fila vacía de columnas celdas"
+  (crear-fila-vacia-aux columnas '()))
+
+(define (crear-fila-vacia-aux columnas resultado)
+  "Función auxiliar recursiva para crear fila vacía"
+  (if (= columnas 0)
+      resultado
+      (crear-fila-vacia-aux (- columnas 1) 
+                           (cons (crear-celda-vacia) resultado))))
+
+(define (obtener-celda tablero fila columna)
+  "Obtiene la celda en la posición (fila, columna)"
+  (obtener-elemento (obtener-elemento tablero fila) columna))
+
+(define (obtener-elemento lista indice)
+  "Obtiene el elemento en el índice de una lista"
+  (if (= indice 0)
+      (first lista)
+      (obtener-elemento (rest lista) (- indice 1))))
+
+(define (actualizar-celda tablero fila columna nueva-celda)
+  "Actualiza una celda específica en el tablero"
+  (actualizar-fila tablero fila 
+                  (actualizar-elemento (obtener-elemento tablero fila) 
+                                      columna nueva-celda)))
+
+(define (actualizar-fila tablero indice-fila nueva-fila)
+  "Actualiza una fila específica en el tablero"
+  (actualizar-elemento tablero indice-fila nueva-fila))
+
+(define (actualizar-elemento lista indice nuevo-elemento)
+  "Actualiza un elemento en una lista"
+  (if (= indice 0)
+      (cons nuevo-elemento (rest lista))
+      (cons (first lista) 
+            (actualizar-elemento (rest lista) (- indice 1) nuevo-elemento))))
+
+;;; FUNCIÓN PRINCIPAL PARA CREAR TABLERO CON MINAS
+
+(define (crear-tablero-con-minas filas columnas porcentaje-minas)
+  "Crea un tablero con minas aleatorias"
+  (let ((total-minas (exact-round (* filas columnas porcentaje-minas))))
+    (colocar-minas-aleatorias (crear-tablero-vacio filas columnas) 
+                             total-minas filas columnas)))
+
+(define (colocar-minas-aleatorias tablero minas-restantes filas columnas)
+  "Coloca minas aleatorias en el tablero de forma recursiva"
+  (if (= minas-restantes 0)
+      (calcular-minas-adyacentes tablero filas columnas)
+      (colocar-minas-aleatorias 
+       (poner-mina-en-posicion-aleatoria tablero filas columnas)
+       (- minas-restantes 1)
+       filas columnas)))
+
+(define (poner-mina-en-posicion-aleatoria tablero filas columnas)
+  "Pone una mina en una posición aleatoria que no tenga mina"
+  (poner-mina-en-posicion-aleatoria-aux tablero 
+                                       (random filas) 
+                                       (random columnas) 
+                                       filas columnas))
+
+(define (poner-mina-en-posicion-aleatoria-aux tablero fila columna filas columnas)
+  "Auxiliar recursivo para poner mina en posición aleatoria"
+  (if (es-mina? (obtener-celda tablero fila columna))
+      (poner-mina-en-posicion-aleatoria tablero filas columnas)
+      (actualizar-celda tablero fila columna 
+                       (poner-mina (obtener-celda tablero fila columna)))))
+
+;;; FUNCIÓN PARA CALCULAR MINAS ADYACENTES
+
+(define (calcular-minas-adyacentes tablero filas columnas)
+  "Calcula minas adyacentes para cada celda"
+  (calcular-minas-adyacentes-fila tablero 0 filas columnas))
+
+(define (calcular-minas-adyacentes-fila tablero fila-actual filas columnas)
+  "Calcula minas adyacentes para cada fila"
+  (if (= fila-actual filas)
+      tablero
+      (calcular-minas-adyacentes-fila 
+       (calcular-minas-adyacentes-columna tablero fila-actual 0 filas columnas)
+       (+ fila-actual 1)
+       filas columnas)))
+
+(define (calcular-minas-adyacentes-columna tablero fila columna-actual filas columnas)
+  "Calcula minas adyacentes para cada columna"
+  (if (= columna-actual columnas)
+      tablero
+      (calcular-minas-adyacentes-columna 
+       (actualizar-celda tablero fila columna-actual
+                        (poner-minas-adyacentes 
+                         (obtener-celda tablero fila columna-actual)
+                         (contar-minas-cercanas tablero fila columna-actual filas columnas)))
+       fila
+       (+ columna-actual 1)
+       filas columnas)))
+
+(define (contar-minas-cercanas tablero fila columna filas columnas)
+  "Cuenta minas en las 8 celdas adyacentes"
+  (contar-minas-cercanas-aux tablero 
+                            (list (- fila 1) fila (+ fila 1))
+                            (list (- columna 1) columna (+ columna 1))
+                            fila columna filas columnas 0))
+
+(define (contar-minas-cercanas-aux tablero filas-adyacentes columnas-adyacentes fila-orig columna-orig filas columnas contador)
+  "Auxiliar recursivo para contar minas cercanas"
+  (if (empty? filas-adyacentes)
+      contador
+      (contar-minas-cercanas-aux 
+       tablero 
+       (rest filas-adyacentes) 
+       columnas-adyacentes 
+       fila-orig columna-orig filas columnas
+       (contar-minas-en-fila tablero 
+                            (first filas-adyacentes) 
+                            columnas-adyacentes 
+                            fila-orig columna-orig 
+                            filas columnas contador))))
+
+(define (contar-minas-en-fila tablero fila columnas-adyacentes fila-orig columna-orig filas columnas contador)
+  "Cuenta minas en una fila de celdas adyacentes"
+  (if (empty? columnas-adyacentes)
+      contador
+      (if (and (>= fila 0) (< fila filas)
+               (>= (first columnas-adyacentes) 0) 
+               (< (first columnas-adyacentes) columnas)
+               (not (and (= fila fila-orig) 
+                         (= (first columnas-adyacentes) columna-orig)))
+               (es-mina? (obtener-celda tablero fila (first columnas-adyacentes))))
+          (contar-minas-en-fila tablero fila (rest columnas-adyacentes) 
+                               fila-orig columna-orig filas columnas 
+                               (+ contador 1))
+          (contar-minas-en-fila tablero fila (rest columnas-adyacentes) 
+                               fila-orig columna-orig filas columnas 
+                               contador))))
+
+;;; EXPORTAR FUNCIONES
+(provide (all-defined-out))

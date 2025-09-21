@@ -48,4 +48,4 @@
 ;; Para probar directamente:
 (printf "=== BUSCEMINAS ===\n")
 (printf "Iniciando juego...\n")
-(BuscaCE 12 12 "Dificil")
+(BuscaCE 8 8 "Facil")

@@ -14,6 +14,8 @@
 (define total-minas 0)  ;; Total de minas en el tablero
 (define banderas-colocadas 0)  ;; Contador de banderas colocadas
 (define label-contador-banderas #f)  ;; Etiqueta para mostrar el contador
+(define total-celdas 0)  ;; Total de celdas en el tablero
+(define celdas-descubiertas 0)  ;; Contador de celdas descubiertas
 
 ;;; FUNCIÓN PARA CONTAR MINAS EN EL TABLERO
 (define (contar-minas-tablero tablero)
@@ -21,6 +23,32 @@
   (apply + (map (λ (fila) 
                   (length (filter es-mina? fila))) 
                 tablero)))
+
+;;; FUNCIÓN PARA CONTAR CELDAS DESCUBIERTAS
+(define (contar-celdas-descubiertas tablero)
+  "Cuenta el total de celdas descubiertas en el tablero"
+  (apply + (map (λ (fila) 
+                  (length (filter esta-descubierta? fila))) 
+                tablero)))
+
+;;; FUNCIÓN PARA VERIFICAR VICTORIA
+(define (verificar-victoria?)
+  "Verifica si el jugador ha ganado el juego"
+  (and (= celdas-descubiertas (- total-celdas total-minas))  ; Todas las celdas sin minas descubiertas
+       (= banderas-colocadas total-minas)))  ; Todas las minas marcadas con banderas
+
+;;; FUNCIÓN PARA MOSTRAR MENSAJE DE VICTORIA
+(define (mostrar-victoria)
+  "Muestra mensaje de victoria y deshabilita el tablero"
+  (message-box "¡Felicidades!" "¡Has ganado! Todas las minas fueron encontradas." #f '(ok))
+  (deshabilitar-tablero))
+
+;;; FUNCIÓN PARA DESHABILITAR TABLERO
+(define (deshabilitar-tablero)
+  "Deshabilita todos los botones del tablero"
+  (for-each (λ (boton-info) 
+              (send (third boton-info) enable #f)) 
+            botones))
 
 ;;; FUNCIÓN PARA CREAR LA VENTANA PRINCIPAL
 (define (crear-ventana-principal)
@@ -124,7 +152,8 @@
                                                 (poner-bandera celda)))
           (set! banderas-colocadas (+ banderas-colocadas 1))
           (actualizar-boton fila columna "🚩")
-          (actualizar-contador-banderas)]
+          (actualizar-contador-banderas)
+          (when (verificar-victoria?) (mostrar-victoria))]  ; Verificar victoria al colocar bandera
          [else
           (message-box "Límite alcanzado" 
                        (format "No puedes colocar más banderas. Límite: ~a" total-minas))]))]
@@ -135,21 +164,27 @@
         (message-box "Aviso" "No puedes descubrir una celda con bandera. Cambia a modo descubrir primero.")]
        [(es-mina? celda)
         (actualizar-boton fila columna "X")
-        (message-box "Game Over" "¡BOOM! Has perdido." #f '(stop ok))]
+        (message-box "Game Over" "¡BOOM! Has perdido." #f '(stop ok))
+        (deshabilitar-tablero)]
        [else
-        (define minas-adyacentes (obtener-minas-adyacentes celda))
-        (actualizar-boton fila columna 
-                         (if (= minas-adyacentes 0) 
-                             " " 
-                             (number->string minas-adyacentes)))
-        
-        ;; Marcar celda como descubierta en el tablero lógico
-        (set! tablero-actual (actualizar-celda tablero-actual fila columna 
-                                              (descubrir-celda-func celda)))
-        
-        ;; Si es 0, descubrir celdas adyacentes automáticamente
-        (when (= minas-adyacentes 0)
-          (descubrir-adyacentes fila columna))])]))
+        (unless (esta-descubierta? celda)  ; Solo procesar si no está descubierta
+          (define minas-adyacentes (obtener-minas-adyacentes celda))
+          (actualizar-boton fila columna 
+                           (if (= minas-adyacentes 0) 
+                               " " 
+                               (number->string minas-adyacentes)))
+          
+          ;; Marcar celda como descubierta en el tablero lógico
+          (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                                (descubrir-celda-func celda)))
+          (set! celdas-descubiertas (+ celdas-descubiertas 1))
+          
+          ;; Verificar victoria después de descubrir celda
+          (when (verificar-victoria?) (mostrar-victoria))
+          
+          ;; Si es 0, descubrir celdas adyacentes automáticamente
+          (when (= minas-adyacentes 0)
+            (descubrir-adyacentes fila columna)))])]))
 
 ;;; FUNCIÓN PARA DESCUBRIR CELDAS ADYACENTES (RECURSIVA)
 (define (descubrir-adyacentes fila columna)
@@ -162,12 +197,16 @@
         ;; Marcar como descubierta
         (set! tablero-actual (actualizar-celda tablero-actual f c 
                                               (descubrir-celda-func celda)))
+        (set! celdas-descubiertas (+ celdas-descubiertas 1))
         
         (define minas-adyacentes (obtener-minas-adyacentes celda))
         (actualizar-boton f c 
                          (if (= minas-adyacentes 0) 
                              " " 
                              (number->string minas-adyacentes)))
+        
+        ;; Verificar victoria después de descubrir celda
+        (when (verificar-victoria?) (mostrar-victoria))
         
         ;; Si también es 0, seguir expandiendo
         (when (= minas-adyacentes 0)
@@ -186,6 +225,8 @@
   (set! modo-bandera? #f)  ;; Reiniciar modo bandera
   (set! total-minas (contar-minas-tablero tablero))  ;; Contar minas
   (set! banderas-colocadas 0)  ;; Reiniciar contador de banderas
+  (set! total-celdas (* num-filas num-columnas))  ;; Calcular total de celdas
+  (set! celdas-descubiertas (contar-celdas-descubiertas tablero))  ;; Contar celdas descubiertas iniciales
   (crear-ventana-principal)
   (crear-controles)
   (crear-filas-tablero panel-tablero 0 num-filas num-columnas)

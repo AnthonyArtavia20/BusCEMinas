@@ -1,0 +1,1 @@
+("8.18" ta6nt ("12602e8a4d98ebad5be859ff9de46f74202d45dd" . "ec180db15be3876be709d8486a69e3e86a69c8d0") #"C:\\Users\\Alex\\Desktop\\Paradigmas\\BusCEMinas\\Core\\logic.rkt" (collects #"drracket" #"private" #"drracket-errortrace-key.rkt") (collects #"racket" #"gui.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))

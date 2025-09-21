@@ -1,42 +1,118 @@
 #lang racket
 
-(require "logic.rkt")
-(require "guiSimple.rkt")
+(require racket/gui
+         "logic.rkt")
 
-;;; NIVELES DE DIFICULTAD
-(define NIVEL-FACIL 0.1)
-(define NIVEL-MEDIO 0.15)
-(define NIVEL-DIFICIL 0.2)
+;;; VARIABLES GLOBALES
+(define tablero-actual #f)
+(define frame #f)
+(define panel-tablero #f)
+(define botones '())  ;; Lista para almacenar referencia a los botones
 
-;;; FUNCIÓN PRINCIPAL
-(define (BuscaCE filas columnas nivel)
-  "Función principal para iniciar el juego"
+;;; FUNCIÓN PARA CREAR LA VENTANA PRINCIPAL
+(define (crear-ventana-principal)
+  (set! frame (new frame% [label "BusCEMinas"] [width 600] [height 400]))
+  (set! panel-tablero (new vertical-panel% [parent frame] [alignment '(center center)])))
+
+;;; FUNCIÓN PARA CREAR BOTONES (RECURSIVA)
+(define (crear-botones-fila parent fila columna-actual total-columnas)
+  "Crea los botones de una fila de forma recursiva"
+  (if (>= columna-actual total-columnas)
+      (void)
+      (let ([boton (new button% 
+                       [parent parent] 
+                       [label "?"] 
+                       [min-width 30] 
+                       [min-height 30]
+                       [callback (λ (b e) (procesar-click fila columna-actual))])])
+        ;; Guardar referencia al botón
+        (set! botones (cons (list fila columna-actual boton) botones))
+        (crear-botones-fila parent fila (+ columna-actual 1) total-columnas))))
+
+(define (crear-filas-tablero parent fila-actual total-filas total-columnas)
+  "Crea las filas del tablero de forma recursiva"
+  (if (>= fila-actual total-filas)
+      (void)
+      (let ([panel-fila (new horizontal-panel% [parent parent] [alignment '(center center)])])
+        (crear-botones-fila panel-fila fila-actual 0 total-columnas)
+        (crear-filas-tablero parent (+ fila-actual 1) total-filas total-columnas))))
+
+;;; FUNCIÓN PARA ACTUALIZAR UN BOTÓN
+(define (actualizar-boton fila columna valor)
+  "Actualiza el texto de un botón específico"
+  (define (buscar-boton lista)
+    (cond
+      [(empty? lista) #f]
+      [(and (= (first (first lista)) fila) 
+            (= (second (first lista)) columna))
+       (third (first lista))]
+      [else (buscar-boton (rest lista))]))
+  
+  (define boton-encontrado (buscar-boton botones))
+  (when boton-encontrado
+    (send boton-encontrado set-label valor)))
+
+;;; FUNCIÓN PARA PROCESAR CLICKS
+(define (procesar-click fila columna)
+  (printf "Click en celda (~a, ~a)\n" fila columna)
+  (define celda (obtener-celda tablero-actual fila columna))
+  
   (cond
-    [(or (< filas 8) (> filas 15)) 
-     (error "El número de filas debe estar entre 8 y 15")]
-    [(or (< columnas 8) (> columnas 15))
-     (error "El número de columnas debe estar entre 8 y 15")]
+    [(es-mina? celda)
+     (actualizar-boton fila columna "X")
+     (message-box "Game Over" "¡BOOM! Has perdido." #f '(stop ok))]
     [else
-     (define porcentaje
-       (cond
-         [(equal? nivel "Facil") NIVEL-FACIL]
-         [(equal? nivel "Medio") NIVEL-MEDIO]
-         [(equal? nivel "Dificil") NIVEL-DIFICIL]
-         [else (error "Nivel no válido. Use: Facil, Medio o Dificil")]))
+     (define minas-adyacentes (obtener-minas-adyacentes celda))
+     (actualizar-boton fila columna 
+                      (if (= minas-adyacentes 0) 
+                          " " 
+                          (number->string minas-adyacentes)))
      
-     (printf "Creando tablero de ~ax~a con nivel ~a...\n" filas columnas nivel)
-     (define tablero (crear-tablero-con-minas filas columnas porcentaje))
-     (printf "Tablero creado exitosamente!\n")
+     ;; Marcar celda como descubierta en el tablero lógico
+     (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                           (descubrir-celda-func celda)))
      
-     (iniciar-juego tablero)  ;; Iniciar la interfaz
-     tablero]))
+     ;; Si es 0, descubrir celdas adyacentes automáticamente
+     (when (= minas-adyacentes 0)
+       (descubrir-adyacentes fila columna))]))
 
-;; Ejemplo de uso:
-;; (BuscaCE 8 8 "Facil")
-;; (BuscaCE 10 12 "Medio") 
-;; (BuscaCE 12 15 "Dificil")
+;;; FUNCIÓN PARA DESCUBRIR CELDAS ADYACENTES (RECURSIVA)
+(define (descubrir-adyacentes fila columna)
+  "Descubre recursivamente las celdas adyacentes a una celda con 0 minas"
+  (define (procesar-adyacente f c)
+    (when (and (>= f 0) (< f (length tablero-actual))
+               (>= c 0) (< c (length (first tablero-actual))))
+      (define celda (obtener-celda tablero-actual f c))
+      (unless (esta-descubierta? celda)
+        ;; Marcar como descubierta
+        (set! tablero-actual (actualizar-celda tablero-actual f c 
+                                              (descubrir-celda-func celda)))
+        
+        (define minas-adyacentes (obtener-minas-adyacentes celda))
+        (actualizar-boton f c 
+                         (if (= minas-adyacentes 0) 
+                             " " 
+                             (number->string minas-adyacentes)))
+        
+        ;; Si también es 0, seguir expandiendo
+        (when (= minas-adyacentes 0)
+          (descubrir-adyacentes f c)))))
+  
+  ;; Procesar las 8 celdas adyacentes
+  (for ([df (in-list '(-1 0 1))])
+    (for ([dc (in-list '(-1 0 1))])
+      (unless (and (= df 0) (= dc 0))
+        (procesar-adyacente (+ fila df) (+ columna dc))))))
 
-;; Para probar directamente:
-(printf "=== BUSCEMINAS ===\n")
-(printf "Iniciando juego...\n")
-(BuscaCE 8 8 "Facil")
+;;; FUNCIÓN PRINCIPAL DE LA INTERFAZ
+(define (iniciar-interfaz tablero num-filas num-columnas)
+  (set! tablero-actual tablero)
+  (set! botones '())  ;; Reiniciar lista de botones
+  (crear-ventana-principal)
+  (crear-filas-tablero panel-tablero 0 num-filas num-columnas)
+  (send frame show #t))
+
+(define (iniciar-juego tablero)
+  (iniciar-interfaz tablero (length tablero) (length (first tablero))))
+
+(provide iniciar-juego)

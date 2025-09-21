@@ -7,12 +7,33 @@
 (define tablero-actual #f)
 (define frame #f)
 (define panel-tablero #f)
+(define panel-control #f)
 (define botones '())  ;; Lista para almacenar referencia a los botones
+(define modo-bandera? #f)  ;; Estado del modo bandera
+(define boton-modo-bandera #f)  ;; Referencia al botón de modo bandera
 
 ;;; FUNCIÓN PARA CREAR LA VENTANA PRINCIPAL
 (define (crear-ventana-principal)
-  (set! frame (new frame% [label "BusCEMinas"] [width 600] [height 400]))
+  (set! frame (new frame% [label "BusCEMinas"] [width 600] [height 450]))
+  (set! panel-control (new horizontal-panel% [parent frame] [alignment '(center center)]))
   (set! panel-tablero (new vertical-panel% [parent frame] [alignment '(center center)])))
+
+;;; FUNCIÓN PARA CREAR BOTÓN DE MODO BANDERA
+(define (crear-boton-modo-bandera)
+  (set! boton-modo-bandera 
+        (new button%
+             [parent panel-control]
+             [label "Modo: Descubrir"]
+             [min-width 120]
+             [min-height 30]
+             [callback (λ (b e) (cambiar-modo-bandera))])))
+
+;;; FUNCIÓN PARA CAMBIAR MODO BANDERA
+(define (cambiar-modo-bandera)
+  (set! modo-bandera? (not modo-bandera?))
+  (send boton-modo-bandera set-label 
+        (if modo-bandera? "Modo: Bandera" "Modo: Descubrir"))
+  (printf "Modo bandera: ~a\n" modo-bandera?))
 
 ;;; FUNCIÓN PARA CREAR BOTONES (RECURSIVA)
 (define (crear-botones-fila parent fila columna-actual total-columnas)
@@ -54,27 +75,41 @@
 
 ;;; FUNCIÓN PARA PROCESAR CLICKS
 (define (procesar-click fila columna)
-  (printf "Click en celda (~a, ~a)\n" fila columna)
+  (printf "Click en celda (~a, ~a) - Modo bandera: ~a\n" fila columna modo-bandera?)
   (define celda (obtener-celda tablero-actual fila columna))
   
   (cond
-    [(es-mina? celda)
-     (actualizar-boton fila columna "X")
-     (message-box "Game Over" "¡BOOM! Has perdido." #f '(stop ok))]
+    [modo-bandera?
+     ;; Modo bandera: poner/quitar bandera
+     (unless (esta-descubierta? celda)
+       (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                             (poner-bandera celda)))
+       (actualizar-boton fila columna 
+                        (if (tiene-bandera? (obtener-celda tablero-actual fila columna))
+                            "🚩" 
+                            "?")))]
     [else
-     (define minas-adyacentes (obtener-minas-adyacentes celda))
-     (actualizar-boton fila columna 
-                      (if (= minas-adyacentes 0) 
-                          " " 
-                          (number->string minas-adyacentes)))
-     
-     ;; Marcar celda como descubierta en el tablero lógico
-     (set! tablero-actual (actualizar-celda tablero-actual fila columna 
-                                           (descubrir-celda-func celda)))
-     
-     ;; Si es 0, descubrir celdas adyacentes automáticamente
-     (when (= minas-adyacentes 0)
-       (descubrir-adyacentes fila columna))]))
+     ;; Modo descubrir: comportamiento normal
+     (cond
+       [(tiene-bandera? celda)
+        (message-box "Aviso" "No puedes descubrir una celda con bandera. Cambia a modo descubrir primero.")]
+       [(es-mina? celda)
+        (actualizar-boton fila columna "X")
+        (message-box "Game Over" "¡BOOM! Has perdido." #f '(stop ok))]
+       [else
+        (define minas-adyacentes (obtener-minas-adyacentes celda))
+        (actualizar-boton fila columna 
+                         (if (= minas-adyacentes 0) 
+                             " " 
+                             (number->string minas-adyacentes)))
+        
+        ;; Marcar celda como descubierta en el tablero lógico
+        (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                              (descubrir-celda-func celda)))
+        
+        ;; Si es 0, descubrir celdas adyacentes automáticamente
+        (when (= minas-adyacentes 0)
+          (descubrir-adyacentes fila columna))])]))
 
 ;;; FUNCIÓN PARA DESCUBRIR CELDAS ADYACENTES (RECURSIVA)
 (define (descubrir-adyacentes fila columna)
@@ -83,7 +118,7 @@
     (when (and (>= f 0) (< f (length tablero-actual))
                (>= c 0) (< c (length (first tablero-actual))))
       (define celda (obtener-celda tablero-actual f c))
-      (unless (esta-descubierta? celda)
+      (unless (or (esta-descubierta? celda) (tiene-bandera? celda))
         ;; Marcar como descubierta
         (set! tablero-actual (actualizar-celda tablero-actual f c 
                                               (descubrir-celda-func celda)))
@@ -108,7 +143,9 @@
 (define (iniciar-interfaz tablero num-filas num-columnas)
   (set! tablero-actual tablero)
   (set! botones '())  ;; Reiniciar lista de botones
+  (set! modo-bandera? #f)  ;; Reiniciar modo bandera
   (crear-ventana-principal)
+  (crear-boton-modo-bandera)
   (crear-filas-tablero panel-tablero 0 num-filas num-columnas)
   (send frame show #t))
 

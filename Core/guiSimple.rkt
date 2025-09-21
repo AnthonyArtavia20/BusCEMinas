@@ -11,12 +11,27 @@
 (define botones '())  ;; Lista para almacenar referencia a los botones
 (define modo-bandera? #f)  ;; Estado del modo bandera
 (define boton-modo-bandera #f)  ;; Referencia al botón de modo bandera
+(define total-minas 0)  ;; Total de minas en el tablero
+(define banderas-colocadas 0)  ;; Contador de banderas colocadas
+(define label-contador-banderas #f)  ;; Etiqueta para mostrar el contador
+
+;;; FUNCIÓN PARA CONTAR MINAS EN EL TABLERO
+(define (contar-minas-tablero tablero)
+  "Cuenta el total de minas en el tablero"
+  (apply + (map (λ (fila) 
+                  (length (filter es-mina? fila))) 
+                tablero)))
 
 ;;; FUNCIÓN PARA CREAR LA VENTANA PRINCIPAL
 (define (crear-ventana-principal)
-  (set! frame (new frame% [label "BusCEMinas"] [width 600] [height 450]))
+  (set! frame (new frame% [label "BusCEMinas"] [width 600] [height 480]))
   (set! panel-control (new horizontal-panel% [parent frame] [alignment '(center center)]))
   (set! panel-tablero (new vertical-panel% [parent frame] [alignment '(center center)])))
+
+;;; FUNCIÓN PARA CREAR CONTROLES
+(define (crear-controles)
+  (crear-boton-modo-bandera)
+  (crear-contador-banderas))
 
 ;;; FUNCIÓN PARA CREAR BOTÓN DE MODO BANDERA
 (define (crear-boton-modo-bandera)
@@ -27,6 +42,19 @@
              [min-width 120]
              [min-height 30]
              [callback (λ (b e) (cambiar-modo-bandera))])))
+
+;;; FUNCIÓN PARA CREAR CONTADOR DE BANDERAS
+(define (crear-contador-banderas)
+  (set! label-contador-banderas
+        (new message%
+             [parent panel-control]
+             [label (format "Banderas: ~a/~a" banderas-colocadas total-minas)]
+             [min-width 150])))
+
+;;; FUNCIÓN PARA ACTUALIZAR CONTADOR DE BANDERAS
+(define (actualizar-contador-banderas)
+  (send label-contador-banderas set-label 
+        (format "Banderas: ~a/~a" banderas-colocadas total-minas)))
 
 ;;; FUNCIÓN PARA CAMBIAR MODO BANDERA
 (define (cambiar-modo-bandera)
@@ -82,12 +110,24 @@
     [modo-bandera?
      ;; Modo bandera: poner/quitar bandera
      (unless (esta-descubierta? celda)
-       (set! tablero-actual (actualizar-celda tablero-actual fila columna 
-                                             (poner-bandera celda)))
-       (actualizar-boton fila columna 
-                        (if (tiene-bandera? (obtener-celda tablero-actual fila columna))
-                            "🚩" 
-                            "?")))]
+       (cond
+         [(tiene-bandera? celda)
+          ;; Quitar bandera
+          (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                                (poner-bandera celda)))
+          (set! banderas-colocadas (- banderas-colocadas 1))
+          (actualizar-boton fila columna "?")
+          (actualizar-contador-banderas)]
+         [(< banderas-colocadas total-minas)
+          ;; Poner bandera (solo si no excede el límite)
+          (set! tablero-actual (actualizar-celda tablero-actual fila columna 
+                                                (poner-bandera celda)))
+          (set! banderas-colocadas (+ banderas-colocadas 1))
+          (actualizar-boton fila columna "🚩")
+          (actualizar-contador-banderas)]
+         [else
+          (message-box "Límite alcanzado" 
+                       (format "No puedes colocar más banderas. Límite: ~a" total-minas))]))]
     [else
      ;; Modo descubrir: comportamiento normal
      (cond
@@ -144,8 +184,10 @@
   (set! tablero-actual tablero)
   (set! botones '())  ;; Reiniciar lista de botones
   (set! modo-bandera? #f)  ;; Reiniciar modo bandera
+  (set! total-minas (contar-minas-tablero tablero))  ;; Contar minas
+  (set! banderas-colocadas 0)  ;; Reiniciar contador de banderas
   (crear-ventana-principal)
-  (crear-boton-modo-bandera)
+  (crear-controles)
   (crear-filas-tablero panel-tablero 0 num-filas num-columnas)
   (send frame show #t))
 

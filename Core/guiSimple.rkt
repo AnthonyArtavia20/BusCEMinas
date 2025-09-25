@@ -8,14 +8,26 @@
 (define frame #f)
 (define panel-tablero #f)
 (define panel-control #f)
-(define botones '())  ;; Lista para almacenar referencia a los botones
-(define modo-bandera? #f)  ;; Estado del modo bandera
-(define boton-modo-bandera #f)  ;; Referencia al botón de modo bandera
-(define total-minas 0)  ;; Total de minas en el tablero
-(define banderas-colocadas 0)  ;; Contador de banderas colocadas
-(define label-contador-banderas #f)  ;; Etiqueta para mostrar el contador
-(define total-celdas 0)  ;; Total de celdas en el tablero
-(define celdas-descubiertas 0)  ;; Contador de celdas descubiertas
+(define botones '())  
+(define modo-bandera? #f)  
+(define boton-modo-bandera #f)  
+(define total-minas 0)  
+(define banderas-colocadas 0)  
+(define label-contador-banderas #f)  
+(define total-celdas 0)  
+(define celdas-descubiertas 0)
+
+;;; FUNCIONES CALLBACK PARA BOTONES
+
+;; Callback para el botón de modo bandera
+(define (callback-cambiar-modo-bandera b e)
+  (cambiar-modo-bandera))
+
+;; Callback genérico para botones del tablero
+(define (crear-callback-boton-tablero fila columna)
+  (define (callback-procesar-click b e)
+    (procesar-click fila columna))
+  callback-procesar-click)
 
 ;;; FUNCIÓN PARA CONTAR MINAS EN EL TABLERO (recursiva)
 (define (contar-minas-tablero tablero)
@@ -70,8 +82,8 @@
 ;;; FUNCIÓN PARA VERIFICAR VICTORIA
 (define (verificar-victoria?)
   "Verifica si el jugador ha ganado el juego"
-  (and (= celdas-descubiertas (- total-celdas total-minas))  ; Todas las celdas sin minas descubiertas
-       (= banderas-colocadas total-minas)))  ; Todas las minas marcadas con banderas
+  (and (= celdas-descubiertas (- total-celdas total-minas))
+       (= banderas-colocadas total-minas)))
 
 ;;; FUNCIÓN PARA MOSTRAR MENSAJE DE VICTORIA
 (define (mostrar-victoria)
@@ -111,7 +123,7 @@
              [label "Modo: Descubrir"]
              [min-width 120]
              [min-height 30]
-             [callback (lambda (b e) (cambiar-modo-bandera))])))
+             [callback callback-cambiar-modo-bandera])))
 
 ;;; FUNCIÓN PARA CREAR CONTADOR DE BANDERAS
 (define (crear-contador-banderas)
@@ -140,7 +152,7 @@
                     [label "?"] 
                     [min-width 30] 
                     [min-height 30]
-                    [callback (lambda (b e) (procesar-click fila columna))]))
+                    [callback (crear-callback-boton-tablero fila columna)]))
   (set! botones (cons (list fila columna boton) botones))
   boton)
 
@@ -301,12 +313,12 @@
 ;;; FUNCIÓN PRINCIPAL DE LA INTERFAZ
 (define (iniciar-interfaz tablero num-filas num-columnas)
   (set! tablero-actual tablero)
-  (set! botones '())  ;; Reiniciar lista de botones
-  (set! modo-bandera? #f)  ;; Reiniciar modo bandera
-  (set! total-minas (contar-minas-tablero tablero))  ;; Contar minas
-  (set! banderas-colocadas 0)  ;; Reiniciar contador de banderas
-  (set! total-celdas (* num-filas num-columnas))  ;; Calcular total de celdas
-  (set! celdas-descubiertas (contar-celdas-descubiertas tablero))  ;; Contar celdas descubiertas iniciales
+  (set! botones '())  
+  (set! modo-bandera? #f)  
+  (set! total-minas (contar-minas-tablero tablero))  
+  (set! banderas-colocadas 0)  
+  (set! total-celdas (* num-filas num-columnas))  
+  (set! celdas-descubiertas (contar-celdas-descubiertas tablero))  
   (crear-ventana-principal)
   (crear-controles)
   (crear-filas-tablero panel-tablero 0 num-filas num-columnas)

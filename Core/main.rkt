@@ -8,12 +8,30 @@
 (define NIVEL-MEDIO 0.15)
 (define NIVEL-DIFICIL 0.2)
 
-;;; FUNCIÓN PARA CONTAR MINAS EN EL TABLERO
+;;; FUNCIÓN PARA CONTAR MINAS EN EL TABLERO 
 (define (contar-minas-tablero tablero)
-  "Cuenta el total de minas en el tablero"
-  (apply + (map (λ (fila) 
-                  (length (filter es-mina? fila))) 
-                tablero)))
+  "Cuenta el total de minas en el tablero de forma recursiva"
+  (contar-minas-tablero-aux tablero 0))
+
+(define (contar-minas-tablero-aux tablero acum)
+  "Auxiliar recursivo para contar minas en el tablero"
+  (if (null? tablero)
+      acum
+      (contar-minas-tablero-aux (cdr tablero) 
+                               (+ acum (contar-minas-fila (car tablero))))))
+
+(define (contar-minas-fila fila)
+  "Cuenta minas en una fila de forma recursiva"
+  (contar-minas-fila-aux fila 0))
+
+(define (contar-minas-fila-aux fila acum)
+  "Auxiliar recursivo para contar minas en una fila"
+  (if (null? fila)
+      acum
+      (contar-minas-fila-aux (cdr fila) 
+                           (if (es-mina? (car fila)) 
+                               (+ acum 1) 
+                               acum))))
 
 ;;; FUNCIÓN PRINCIPAL
 (define (BuscaCE filas columnas nivel)

@@ -1,5 +1,7 @@
 #lang racket
 
+(require racket/gui)
+
 (require "logic.rkt")
 (require "guiSimple.rkt")
 
@@ -58,12 +60,50 @@
      (iniciar-juego tablero)  ;; Iniciar la interfaz
      tablero]))
 
-;; Ejemplo de uso:
-;; (BuscaCE 8 8 "Facil")
-;; (BuscaCE 10 12 "Medio") 
-;; (BuscaCE 12 15 "Dificil")
 
-;; Para probar directamente:
-(printf "=== BUSCEMINAS ===\n")
-(printf "Iniciando juego...\n")
-(BuscaCE 8 8 "Facil")
+; Crear la ventana principal
+(define ventana (new frame%
+                     [label "BuscaMinas AAA"]
+                     [width 500]
+                     [height 200]))
+
+; Crear un mensaje (etiqueta de texto)
+(define mensaje (new message%
+                     [parent ventana]
+                     [label "Hola, bienvenido a BuscaMinas AAA"]))
+
+; Crear una selección desplegable (choice)
+(define seleccion-filas (new choice%
+                        [parent ventana]
+                        [label "Elige la cantidad de filas: "]
+                        [choices (list "8" "9" "10" "11" "12" "13" "14" "15")]))
+
+(define seleccion-columnas (new choice%
+                        [parent ventana]
+                        [label "Elige la cantidad de Columnas: "]
+                        [choices (list "8" "9" "10" "11" "12" "13" "14" "15")]))
+
+; Función para obtener la opción seleccionada como string
+(define (obtener-seleccion choice-widget)
+  (define indice (send choice-widget get-selection))
+  (if indice
+      (send choice-widget get-string indice)
+      #f)) ; Retorna #f si no hay selección
+
+; Función que se ejecuta al presionar el botón
+(define (boton-presionado btn evt)
+  (define filas-seleccionadas (obtener-seleccion seleccion-filas))
+  (define columnas-seleccionadas (obtener-seleccion seleccion-columnas))
+  (printf "=== BUSCEMINAS ===\n")
+  (printf "Iniciando juego...\n")
+  (BuscaCE (string->number filas-seleccionadas) (string->number columnas-seleccionadas) "Facil"))
+
+; Crear el botón
+(define boton (new button%
+                   [parent ventana]
+                   [label "Haz clic aquí"]
+                   [callback boton-presionado]))
+
+; Mostrar la ventana
+(send ventana show #t)
+

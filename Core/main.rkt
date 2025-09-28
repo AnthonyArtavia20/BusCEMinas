@@ -83,6 +83,11 @@
                         [label "Elige la cantidad de Columnas: "]
                         [choices (list "8" "9" "10" "11" "12" "13" "14" "15")]))
 
+(define seleccion-dificultad (new choice%
+                        [parent ventana]
+                        [label "Elige la dificultad: "]
+                        [choices (list "Facil" "Medio" "Dificil" )]))
+
 ; Función para obtener la opción seleccionada como string
 (define (obtener-seleccion choice-widget)
   (define indice (send choice-widget get-selection))
@@ -94,9 +99,10 @@
 (define (boton-presionado btn evt)
   (define filas-seleccionadas (obtener-seleccion seleccion-filas))
   (define columnas-seleccionadas (obtener-seleccion seleccion-columnas))
+  (define dificultad-seleccionada (obtener-seleccion seleccion-dificultad))
   (printf "=== BUSCEMINAS ===\n")
   (printf "Iniciando juego...\n")
-  (BuscaCE (string->number filas-seleccionadas) (string->number columnas-seleccionadas) "Facil"))
+  (BuscaCE (string->number filas-seleccionadas) (string->number columnas-seleccionadas) dificultad-seleccionada))
 
 ; Crear el botón
 (define boton (new button%
